@@ -1,6 +1,6 @@
-# Walmart MVP - Architecture & Implementation Plan (Location-Based & Nutrition-Focused)
+# MVP - Architecture & Implementation Plan (Location-Based & Nutrition-Focused)
 
-## MVP Scope Definition - Updated
+## MVP Scope Definition
 
 ### Core User Journey
 1. **App detects user location** → finds nearest Walmart stores
