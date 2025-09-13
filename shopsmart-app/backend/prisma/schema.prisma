@@ -1,0 +1,376 @@
+// Prisma Schema for ShopSmart App
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Management
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  firstName String
+  lastName  String
+  phone     String?
+  password  String
+  
+  preferences UserPreferences?
+  
+  shoppingLists ShoppingList[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("users")
+}
+
+model UserPreferences {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  dietaryRestrictions String[]
+  allergies          String[]
+  healthGoals        String[]
+  preferredStores    String[]
+  
+  budgetMin          Float?
+  budgetMax          Float?
+  organicPreference  String @default("no-preference") // required, preferred, no-preference
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("user_preferences")
+}
+
+// Store Management
+model Store {
+  id      String @id @default(cuid())
+  chain   String // walmart, target, costco, kroger
+  name    String
+  address String
+  
+  lat   Float
+  lng   Float
+  phone String?
+  
+  storeType String? // supercenter, neighborhood, warehouse
+  
+  hours   StoreHours?
+  layout  StoreLayout?
+  
+  products StoreProduct[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("stores")
+}
+
+model StoreHours {
+  id      String @id @default(cuid())
+  storeId String @unique
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  
+  mondayOpen     String?
+  mondayClose    String?
+  mondayClosed   Boolean @default(false)
+  
+  tuesdayOpen    String?
+  tuesdayClose   String?
+  tuesdayClosed  Boolean @default(false)
+  
+  wednesdayOpen  String?
+  wednesdayClose String?
+  wednesdayClosed Boolean @default(false)
+  
+  thursdayOpen   String?
+  thursdayClose  String?
+  thursdayClosed Boolean @default(false)
+  
+  fridayOpen     String?
+  fridayClose    String?
+  fridayClosed   Boolean @default(false)
+  
+  saturdayOpen   String?
+  saturdayClose  String?
+  saturdayClosed Boolean @default(false)
+  
+  sundayOpen     String?
+  sundayClose    String?
+  sundayClosed   Boolean @default(false)
+  
+  @@map("store_hours")
+}
+
+model StoreLayout {
+  id      String @id @default(cuid())
+  storeId String @unique
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  
+  layoutType String // supercenter, neighborhood, warehouse, standard
+  
+  entranceLat Float?
+  entranceLng Float?
+  
+  departments Department[]
+  aisles      Aisle[]
+  
+  @@map("store_layouts")
+}
+
+model Department {
+  id       String      @id @default(cuid())
+  layoutId String
+  layout   StoreLayout @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  
+  name String
+  lat  Float?
+  lng  Float?
+  
+  aisles Aisle[]
+  
+  @@map("departments")
+}
+
+model Aisle {
+  id           String       @id @default(cuid())
+  layoutId     String
+  layout       StoreLayout  @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  departmentId String?
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  
+  number     String
+  name       String
+  lat        Float?
+  lng        Float?
+  categories String[]
+  
+  products StoreProduct[]
+  
+  @@map("aisles")
+}
+
+// Product Management
+model Product {
+  id          String @id @default(cuid())
+  upc         String? @unique
+  name        String
+  brand       String
+  description String?
+  
+  category    String
+  subcategory String?
+  
+  imageUrl    String?
+  ingredients String?
+  allergens   String[]
+  
+  certifications String[] // organic, non-gmo, gluten-free, etc.
+  
+  nutritionData NutritionData?
+  
+  storeProducts StoreProduct[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([category])
+  @@index([brand])
+  @@map("products")
+}
+
+model NutritionData {
+  id        String  @id @default(cuid())
+  productId String  @unique
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  servingSize           String?
+  servingsPerContainer  Float?
+  
+  calories              Float?
+  caloriesFromFat       Float?
+  totalFat             Float?
+  saturatedFat         Float?
+  transFat             Float?
+  cholesterol          Float?
+  sodium               Float?
+  totalCarbs           Float?
+  dietaryFiber         Float?
+  sugars               Float?
+  addedSugars          Float?
+  protein              Float?
+  
+  vitaminA             Float?
+  vitaminC             Float?
+  calcium              Float?
+  iron                 Float?
+  potassium            Float?
+  vitaminD             Float?
+  
+  // Scoring data
+  finalScore           Float?
+  nutritionalQuality   Float?
+  additivesImpact      Float?
+  organicBonus         Float?
+  scoreCategory        String? // excellent, good, fair, poor
+  
+  additives            ProductAdditive[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("nutrition_data")
+}
+
+model StoreProduct {
+  id        String  @id @default(cuid())
+  storeId   String
+  productId String
+  store     Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  storeProductId String // Store's internal product ID
+  
+  price          Float
+  salePrice      Float?
+  inStock        Boolean @default(true)
+  availability   String  @default("in-stock") // in-stock, low-stock, out-of-stock
+  
+  aisleId        String?
+  aisle          Aisle?  @relation(fields: [aisleId], references: [id])
+  section        String?
+  
+  lastUpdated    DateTime @default(now())
+  
+  @@unique([storeId, productId])
+  @@index([storeId, inStock])
+  @@index([productId])
+  @@map("store_products")
+}
+
+// Additives Database
+model Additive {
+  id          String @id @default(cuid())
+  eNumber     String? @unique
+  name        String
+  riskLevel   String // green, yellow, orange, red
+  description String?
+  
+  pointDeduction Int @default(0)
+  healthImpacts  String[]
+  
+  productAdditives ProductAdditive[]
+  
+  @@map("additives")
+}
+
+model ProductAdditive {
+  id              String        @id @default(cuid())
+  nutritionDataId String
+  additiveId      String
+  nutritionData   NutritionData @relation(fields: [nutritionDataId], references: [id], onDelete: Cascade)
+  additive        Additive      @relation(fields: [additiveId], references: [id])
+  
+  @@unique([nutritionDataId, additiveId])
+  @@map("product_additives")
+}
+
+// Shopping List Management
+model ShoppingList {
+  id     String @id @default(cuid())
+  name   String
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status               String @default("draft") // draft, active, completed
+  totalEstimatedCost   Float  @default(0)
+  
+  items  ShoppingListItem[]
+  stores ShoppingListStore[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("shopping_lists")
+}
+
+model ShoppingListItem {
+  id             String       @id @default(cuid())
+  shoppingListId String
+  shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  
+  productId       String?
+  customName      String? // For manually entered items
+  quantity        Float   @default(1)
+  unit            String?
+  notes           String?
+  priority        String  @default("medium") // high, medium, low
+  completed       Boolean @default(false)
+  
+  alternatives     String[] // Alternative product IDs
+  storeAssignment  String?  // Store ID where item will be purchased
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("shopping_list_items")
+}
+
+model ShoppingListStore {
+  id             String       @id @default(cuid())
+  shoppingListId String
+  shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  
+  storeId        String
+  itemIds        String[] // Shopping list item IDs assigned to this store
+  estimatedCost  Float    @default(0)
+  completed      Boolean  @default(false)
+  
+  route          StoreRoute?
+  
+  @@unique([shoppingListId, storeId])
+  @@map("shopping_list_stores")
+}
+
+model StoreRoute {
+  id                      String             @id @default(cuid())
+  shoppingListStoreId     String             @unique
+  shoppingListStore       ShoppingListStore  @relation(fields: [shoppingListStoreId], references: [id], onDelete: Cascade)
+  
+  estimatedTime           Int // minutes
+  totalDistance           Int // feet
+  
+  optimizeForTemperature  Boolean @default(true)
+  optimizeForWeight       Boolean @default(true)
+  optimizeForFragility    Boolean @default(false)
+  
+  stops                   RouteStop[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("store_routes")
+}
+
+model RouteStop {
+  id         String     @id @default(cuid())
+  routeId    String
+  route      StoreRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  
+  itemIds         String[]
+  aisle           String
+  section         String?
+  order           Int
+  estimatedTime   Int // seconds
+  
+  lat             Float?
+  lng             Float?
+  
+  @@map("route_stops")
+}

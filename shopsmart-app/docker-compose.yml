@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: shopsmart-postgres
+    environment:
+      POSTGRES_DB: shopsmart
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init:/docker-entrypoint-initdb.d
+    networks:
+      - shopsmart-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: shopsmart-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - shopsmart-network
+    command: redis-server --appendonly yes
+
+  # For development - can be removed in production
+  adminer:
+    image: adminer:latest
+    container_name: shopsmart-adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - shopsmart-network
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  shopsmart-network:
+    driver: bridge
